@@ -43,16 +43,16 @@ export async function POST(request) {
       }
     }
     
-    // Limit to maximum 40 buyers to prevent the request from timing out in the browser
-    buyers = deduplicated.slice(0, 40);
+    // Limit to maximum 15 buyers to prevent the request from timing out in Netlify's 10s window
+    buyers = deduplicated.slice(0, 15);
 
     if (buyers.length === 0) {
       return Response.json({ buyers: [], totalFound: 0 });
     }
 
     // Step 2: For buyers with websites, try to scrape emails
-    // Process in chunks to limit concurrency
-    const MAX_CONCURRENT = 10;
+    // Process all 15 concurrently
+    const MAX_CONCURRENT = 15;
     const finalBuyers = [];
 
     for (let i = 0; i < buyers.length; i += MAX_CONCURRENT) {
