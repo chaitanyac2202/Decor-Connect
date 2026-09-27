@@ -1,7 +1,7 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { useState, useContext } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useContext, useEffect } from 'react';
 import { Search, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { AppContext } from '@/context/AppContext';
 import { useRouter } from 'next/navigation';
@@ -40,6 +40,30 @@ export default function SearchForm() {
   
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingText, setLoadingText] = useState('Initiating search...');
+  
+  useEffect(() => {
+    if (!isLoading) {
+      setLoadingText('Initiating search...');
+      return;
+    }
+    
+    const phrases = [
+      'Scanning OpenStreetMap for businesses...',
+      'Checking TomTom Maps for storefronts...',
+      'Gathering contact information...',
+      'Scraping business websites for emails...',
+      'Filtering out invalid addresses...',
+      'Wrapping things up...'
+    ];
+    let i = 0;
+    const interval = setInterval(() => {
+      i = (i + 1) % phrases.length;
+      setLoadingText(phrases[i]);
+    }, 2500);
+    
+    return () => clearInterval(interval);
+  }, [isLoading]);
   
   const { setSellerInfo, setSearchResults } = useContext(AppContext);
   const router = useRouter();
@@ -114,8 +138,40 @@ export default function SearchForm() {
   };
 
   return (
-    <motion.form 
-      onSubmit={handleSubmit}
+    <>
+      <AnimatePresence>
+        {isLoading && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          >
+            <div className="flex flex-col items-center max-w-md text-center p-8 bg-gray-900/90 rounded-2xl border border-purple-500/30 shadow-[0_0_50px_rgba(168,85,247,0.2)]">
+              <Loader2 className="w-16 h-16 text-purple-500 animate-spin mb-6" />
+              <motion.h3 
+                className="text-2xl font-semibold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent mb-4"
+              >
+                Finding Buyers
+              </motion.h3>
+              <div className="h-8 flex items-center justify-center">
+                <motion.p 
+                  key={loadingText}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="text-gray-300 text-lg"
+                >
+                  {loadingText}
+                </motion.p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <motion.form 
+        onSubmit={handleSubmit}
       initial="hidden"
       animate="visible"
       variants={{
@@ -241,5 +297,6 @@ export default function SearchForm() {
         )}
       </motion.button>
     </motion.form>
+    </>
   );
 }
