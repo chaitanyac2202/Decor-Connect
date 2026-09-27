@@ -84,7 +84,10 @@ export default function SearchForm() {
       setSellerInfo({
         name: sellerName,
         email: sellerEmail,
-        businessName: businessName
+        businessName: businessName,
+        productCategory: productCategory,
+        productDescription: productDescription,
+        location: location,
       });
       
       const response = await fetch('/api/find-buyers', {

@@ -1,18 +1,33 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { X, Send, Loader2, CheckCircle2, XCircle, MailCheck, LayoutTemplate } from 'lucide-react';
+import { AppContext } from '@/context/AppContext';
+import { EMAIL_TEMPLATES } from '@/lib/emailTemplates';
 
 export default function EmailModal({ buyers, sellerInfo, onClose }) {
+  const { addToHistory } = useContext(AppContext);
   const [step, setStep] = useState('compose'); // compose, preview, sending, summary
   
-  const [subject, setSubject] = useState(`Partnership Opportunity - ${sellerInfo?.businessName || 'Us'}`);
-  const [body, setBody] = useState(
-    `Dear [Buyer Name],\n\nI'm reaching out from ${sellerInfo?.businessName || '[Business Name]'} to introduce our ${sellerInfo?.productCategory || '[Product Category]'} collection.\n\n${sellerInfo?.productDescription || '[Product Description]'}\n\nWe believe our products would be a great fit for your store and customers. I'd love to discuss a potential partnership.\n\nBest regards,\n${sellerInfo?.name || '[Seller Name]'}\n${sellerInfo?.email || '[Seller Email]'}`
-  );
+  const [selectedTemplate, setSelectedTemplate] = useState('introduction');
+  const initialTemplate = EMAIL_TEMPLATES.find(t => t.id === 'introduction');
+  
+  const [subject, setSubject] = useState(initialTemplate.subject(sellerInfo));
+  const [body, setBody] = useState(initialTemplate.body(sellerInfo));
 
   const [results, setResults] = useState(null);
+
+  const handleTemplateChange = (e) => {
+    const templateId = e.target.value;
+    setSelectedTemplate(templateId);
+    
+    const template = EMAIL_TEMPLATES.find(t => t.id === templateId);
+    if (template) {
+      setSubject(template.subject(sellerInfo));
+      setBody(template.body(sellerInfo));
+    }
+  };
 
   const handleSend = async () => {
     setStep('sending');
@@ -30,9 +45,31 @@ export default function EmailModal({ buyers, sellerInfo, onClose }) {
       });
       
       const data = await response.json();
-      setResults(data.results || { sent: 0, failed: buyers.length, errors: ['Unknown error'] });
+      const sendResults = data.results || { sent: 0, failed: buyers.length, errors: ['Unknown error'], recipientDetails: [] };
+      setResults(sendResults);
+
+      // Save to dashboard history
+      const historyRecord = {
+        id: Date.now().toString(),
+        date: new Date().toISOString(),
+        productCategory: sellerInfo?.productCategory || 'Unknown',
+        location: sellerInfo?.location || 'Unknown',
+        buyersFound: buyers.length,
+        emailsSent: sendResults.sent,
+        emailsFailed: sendResults.failed,
+        confirmationSent: sendResults.confirmationSent || false,
+        recipients: (sendResults.recipientDetails || []).map(r => ({
+          name: r.name,
+          email: r.email,
+          status: r.status,
+          trackingId: r.trackingId
+        })),
+      };
+      addToHistory(historyRecord);
+
     } catch (error) {
-      setResults({ sent: 0, failed: buyers.length, errors: [error.message] });
+      const errorResults = { sent: 0, failed: buyers.length, errors: [error.message], recipientDetails: [] };
+      setResults(errorResults);
     } finally {
       setStep('summary');
     }
@@ -71,8 +108,36 @@ export default function EmailModal({ buyers, sellerInfo, onClose }) {
         <div className="flex-1 overflow-y-auto p-6">
           {step === 'compose' && (
             <div className="space-y-6">
+              
+              {/* Template Selector */}
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                <label className="flex items-center gap-2 text-sm font-medium text-purple-300 mb-3">
+                  <LayoutTemplate className="w-4 h-4" />
+                  Email Template
+                </label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {EMAIL_TEMPLATES.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => handleTemplateChange({ target: { value: t.id } })}
+                      className={`text-left px-3 py-2 rounded-lg text-sm transition-all border ${
+                        selectedTemplate === t.id 
+                          ? 'bg-purple-500/20 border-purple-500/50 text-white' 
+                          : 'bg-black/40 border-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-200'
+                      }`}
+                    >
+                      <div className="font-medium mb-1">{t.name}</div>
+                      <div className="text-xs opacity-70 truncate">{t.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div>
-                <div className="text-sm text-gray-400 mb-2">Sending to {buyers.length} buyers</div>
+                <div className="text-sm text-gray-400 mb-2 flex justify-between">
+                  <span>Sending to {buyers.length} buyers</span>
+                  <span className="text-purple-400 flex items-center gap-1"><MailCheck className="w-3.5 h-3.5" /> Open tracking enabled</span>
+                </div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Subject Line</label>
                 <input
                   type="text"
@@ -86,15 +151,15 @@ export default function EmailModal({ buyers, sellerInfo, onClose }) {
                 <textarea
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
-                  rows={12}
+                  rows={10}
                   className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500 transition-colors resize-none font-sans"
                 />
                 <p className="text-xs text-gray-500 mt-2">
-                  Use [Buyer Name] as a placeholder for the recipient's business name.
+                  Use [Buyer Name] as a placeholder for the recipient&apos;s business name.
                   CAN-SPAM compliance footer will be appended automatically.
                 </p>
               </div>
-              <div className="flex justify-end gap-3 pt-4">
+              <div className="flex justify-end gap-3 pt-2">
                 <button
                   onClick={onClose}
                   className="px-6 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-white transition-colors"
@@ -185,6 +250,35 @@ export default function EmailModal({ buyers, sellerInfo, onClose }) {
                 </div>
               </div>
 
+              {/* Confirmation email notice */}
+              {results.confirmationSent && (
+                <div className="max-w-md mx-auto bg-green-500/10 border border-green-500/20 rounded-xl p-4 text-sm text-green-200 flex items-start gap-3">
+                  <MailCheck className="w-5 h-5 mt-0.5 shrink-0 text-green-400" />
+                  <div>
+                    <p className="font-semibold mb-1">Confirmation email sent!</p>
+                    <p className="text-green-300/80">A detailed report of this campaign has been sent to <strong>{sellerInfo?.email}</strong>. Check your inbox.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Recipient details */}
+              {results.recipientDetails && results.recipientDetails.length > 0 && (
+                <div className="max-w-md mx-auto space-y-2">
+                  <p className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Recipients</p>
+                  {results.recipientDetails.map((r, i) => (
+                    <div key={i} className="bg-white/5 rounded-xl p-3 flex justify-between items-center">
+                      <div>
+                        <p className="font-medium text-white text-sm">{r.name}</p>
+                        <p className="text-xs text-gray-400">{r.email}</p>
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded-full ${r.status === 'sent' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                        {r.status === 'sent' ? '✓ Sent' : '✗ Failed'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {results.errors?.length > 0 && (
                 <div className="max-w-md mx-auto bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-sm text-red-200">
                   <p className="font-semibold mb-2">Errors encountered:</p>
@@ -199,7 +293,7 @@ export default function EmailModal({ buyers, sellerInfo, onClose }) {
                 </div>
               )}
 
-              <div className="flex justify-center pt-4">
+              <div className="flex justify-center gap-4 pt-4">
                 <button
                   onClick={onClose}
                   className="px-8 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium transition-colors"

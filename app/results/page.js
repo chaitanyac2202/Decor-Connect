@@ -6,7 +6,7 @@ import AnimatedBackground from '@/components/AnimatedBackground';
 import BuyerCard from '@/components/BuyerCard';
 import EmailModal from '@/components/EmailModal';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Filter, ArrowLeft, Send } from 'lucide-react';
+import { Filter, ArrowLeft, Send, Download } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -59,6 +59,32 @@ export default function ResultsPage() {
     }
   };
 
+  const handleExportCSV = () => {
+    if (!searchResults || searchResults.length === 0) return;
+    
+    const headers = ['Name', 'Address', 'City', 'State', 'Phone', 'Website', 'Email', 'Category', 'Source'];
+    const rows = searchResults.map(b => [
+      b.name || '',
+      (b.address || '').replace(/,/g, ' '),
+      b.city || '',
+      b.state || '',
+      b.phone || '',
+      b.website || '',
+      b.email || 'N/A',
+      b.category || '',
+      b.source || ''
+    ]);
+    
+    const csvContent = [headers.join(','), ...rows.map(r => r.map(cell => `"${cell}"`).join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `decorconnect-buyers-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const selectedWithEmailCount = Array.from(selectedBuyers).filter(id => {
     const buyer = searchResults?.find(b => b.id === id);
     return buyer && buyer.email;
@@ -109,6 +135,13 @@ export default function ResultsPage() {
               className="text-sm px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
             >
               {selectedBuyers.size === filteredAndSortedBuyers.length ? 'Deselect All' : 'Select All'}
+            </button>
+            <button 
+              onClick={handleExportCSV}
+              className="text-sm px-4 py-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/20 transition-colors flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Export CSV
             </button>
             <span className="text-sm text-gray-400">{selectedBuyers.size} selected</span>
           </div>

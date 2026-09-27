@@ -40,7 +40,7 @@ export const AppProvider = ({ children }) => {
     <AppContext.Provider value={{
       sellerInfo, setSellerInfo,
       searchResults, setSearchResults,
-      sentHistory, addToHistory
+      sentHistory, setSentHistory, addToHistory
     }}>
       {children}
     </AppContext.Provider>

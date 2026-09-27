@@ -4,7 +4,6 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Sparkles, ArrowRight, Package, Search, Send, Shield, Zap, Database } from 'lucide-react'
 import AnimatedBackground from '@/components/AnimatedBackground'
-import Footer from '@/components/Footer'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -222,7 +221,6 @@ export default function LandingPage() {
         </motion.div>
       </section>
 
-      <Footer />
     </div>
   )
 }
