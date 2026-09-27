@@ -8,16 +8,28 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/Toast';
 
 const CATEGORIES = [
-  'Wall Art',
-  'Furniture',
-  'Lighting',
-  'Rugs',
-  'Curtains',
-  'Vases & Decor Pieces',
-  'Mirrors',
-  'Candles',
-  'Garden Decor',
-  'Other'
+  'Singing bowls',
+  'Candle holders',
+  'Crystal candle holders',
+  'Decorative glassware and home decor',
+  'Votive candle holders'
+];
+
+const ALASKA_LOCATIONS = [
+  'Anchorage, Alaska', 'Wasilla, Alaska', 'Palmer, Alaska', 'Kenai, Alaska', 'Soldotna, Alaska',
+  'Homer, Alaska', 'Juneau, Alaska', 'Sitka, Alaska', 'Ketchikan, Alaska', 'Skagway, Alaska',
+  'Wrangell, Alaska', 'Fairbanks, Alaska', 'North Pole, Alaska', 'Delta Junction, Alaska',
+  'Nenana, Alaska', 'Nome, Alaska', 'Bethel, Alaska', 'Dillingham, Alaska', 'Unalaska, Alaska',
+  'Utqiagvik, Alaska'
+];
+
+const SEARCH_KEYWORDS = [
+  'candle holders', 'candle holder', 'decorative candle holders', 'metal candle holders',
+  'handmade candle holders', 'decorative candle holder', 'tabletop candle holders',
+  'home decor candle holders', 'candle holder store', 'home decor store', 'gift shop',
+  'gift store', 'home accessories store', 'decor store', 'candle shop', 'candle retailer',
+  'home decor boutique', 'wholesale candle holders', 'candle holder wholesaler',
+  'home decor wholesaler', 'giftware wholesaler'
 ];
 
 const inputClasses = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all duration-300";
@@ -30,8 +42,9 @@ const itemVariants = {
 
 export default function SearchForm() {
   const [productCategory, setProductCategory] = useState('');
-  const [productDescription, setProductDescription] = useState('');
+  const [searchKeyword, setSearchKeyword] = useState('');
   const [location, setLocation] = useState('');
+  const [locationSuggestions, setLocationSuggestions] = useState(ALASKA_LOCATIONS);
   const [sellerName, setSellerName] = useState('');
   const [sellerEmail, setSellerEmail] = useState('');
   const [businessName, setBusinessName] = useState('');
@@ -64,6 +77,31 @@ export default function SearchForm() {
     
     return () => clearInterval(interval);
   }, [isLoading]);
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (location && location.length >= 2) {
+        try {
+          const res = await fetch(`/api/places-autocomplete?q=${encodeURIComponent(location)}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.length > 0) {
+              // Combine the dynamic data with the static ALASKA_LOCATIONS
+              setLocationSuggestions(Array.from(new Set([...data, ...ALASKA_LOCATIONS])));
+            } else {
+              setLocationSuggestions(ALASKA_LOCATIONS);
+            }
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      } else {
+        setLocationSuggestions(ALASKA_LOCATIONS);
+      }
+    }, 400);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [location]);
   
   const { setSellerInfo, setSearchResults } = useContext(AppContext);
   const router = useRouter();
@@ -84,7 +122,7 @@ export default function SearchForm() {
   const validate = () => {
     const newErrors = {};
     if (!productCategory) newErrors.productCategory = 'Category is required';
-    if (!productDescription) newErrors.productDescription = 'Description is required';
+    if (!searchKeyword) newErrors.searchKeyword = 'Keyword is required';
     if (!location) newErrors.location = 'Location is required';
     if (!sellerName) newErrors.sellerName = 'Name is required';
     if (!sellerEmail) {
@@ -110,16 +148,17 @@ export default function SearchForm() {
         email: sellerEmail,
         businessName: businessName,
         productCategory: productCategory,
-        productDescription: productDescription,
+        searchKeyword: searchKeyword,
         location: location,
       });
       
+      // Pass the selected searchKeyword instead of category to the API
       const response = await fetch('/api/find-buyers', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ category: productCategory, location }),
+        body: JSON.stringify({ category: searchKeyword, location }),
       });
       
       if (!response.ok) {
@@ -231,25 +270,35 @@ export default function SearchForm() {
       </motion.div>
 
       <motion.div variants={itemVariants}>
-        <label className={labelClasses}>Product Description</label>
-        <textarea
-          value={productDescription}
-          onChange={(e) => setProductDescription(e.target.value)}
-          className={`${inputClasses} min-h-[100px] resize-none`}
-          placeholder="Describe your product..."
-        />
-        {errors.productDescription && <p className="text-red-500 text-xs mt-1">{errors.productDescription}</p>}
+        <label className={labelClasses}>Target Keyword</label>
+        <select
+          value={searchKeyword}
+          onChange={(e) => setSearchKeyword(e.target.value)}
+          className={`${inputClasses} appearance-none`}
+        >
+          <option value="" disabled className="bg-gray-900">Select a search keyword</option>
+          {SEARCH_KEYWORDS.map(kw => (
+            <option key={kw} value={kw} className="bg-gray-900">{kw}</option>
+          ))}
+        </select>
+        {errors.searchKeyword && <p className="text-red-500 text-xs mt-1">{errors.searchKeyword}</p>}
       </motion.div>
 
       <motion.div variants={itemVariants}>
         <label className={labelClasses}>Target Location</label>
         <input
           type="text"
+          list="alaska-locations"
           value={location}
           onChange={(e) => setLocation(e.target.value)}
           className={inputClasses}
-          placeholder="e.g., New York, NY or California"
+          placeholder="e.g., Anchorage, Alaska or New York, NY"
         />
+        <datalist id="alaska-locations">
+          {locationSuggestions.map(loc => (
+            <option key={loc} value={loc} />
+          ))}
+        </datalist>
         {errors.location && <p className="text-red-500 text-xs mt-1">{errors.location}</p>}
       </motion.div>
 

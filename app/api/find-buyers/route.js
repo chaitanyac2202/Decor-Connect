@@ -42,17 +42,17 @@ export async function POST(request) {
         deduplicated.push(item);
       }
     }
-    // Limit to maximum 100 buyers
-    buyers = deduplicated.slice(0, 100);
+    // Do not limit buyers - get all of them
+    buyers = deduplicated;
 
     if (buyers.length === 0) {
       return Response.json({ buyers: [], totalFound: 0 });
     }
 
     // Step 2: For buyers with websites, try to scrape emails
-    // Process all 100 concurrently for maximum speed to avoid serverless timeouts
-    const MAX_CONCURRENT = 100;
-    const finalBuyers = [];
+    // Process all concurrently for maximum speed to avoid serverless timeouts
+    const MAX_CONCURRENT = 500;
+    let finalBuyers = [];
 
     for (let i = 0; i < buyers.length; i += MAX_CONCURRENT) {
       const chunk = buyers.slice(i, i + MAX_CONCURRENT);
@@ -80,66 +80,14 @@ export async function POST(request) {
       });
     }
 
-    // --- DEMO MODE INJECTION ---
-    // Inject guaranteed high-quality results with emails so the demo never fails
-    const demoBuyers = [
-      {
-        id: 'demo_1',
-        name: `Luxe Decor ${location.split(',')[0]}`,
-        address: `123 Main St, ${location}`,
-        city: location.split(',')[0] || 'City',
-        state: location.split(',')[1] || '',
-        phone: '+1 (555) 123-4567',
-        website: 'https://luxedecor-demo.com',
-        category: category,
-        source: 'Premium Database',
-        latitude: null,
-        longitude: null,
-        email: 'purchasing@luxedecor-demo.com',
-        emailStatus: 'found'
-      },
-      {
-        id: 'demo_2',
-        name: `Modern ${category} Gallery`,
-        address: `456 Commerce Blvd, ${location}`,
-        city: location.split(',')[0] || 'City',
-        state: location.split(',')[1] || '',
-        phone: '+1 (555) 987-6543',
-        website: 'https://modernhome-gallery.net',
-        category: category,
-        source: 'Premium Database',
-        latitude: null,
-        longitude: null,
-        email: 'hello@modernhome-gallery.net',
-        emailStatus: 'found'
-      },
-      {
-        id: 'demo_3',
-        name: `Elite Home Retailers`,
-        address: `789 Retail Park, ${location}`,
-        city: location.split(',')[0] || 'City',
-        state: location.split(',')[1] || '',
-        phone: '+1 (555) 555-0000',
-        website: 'https://elite-retail-demo.org',
-        category: category,
-        source: 'Premium Database',
-        latitude: null,
-        longitude: null,
-        email: 'vendors@elite-retail-demo.org',
-        emailStatus: 'found'
-      }
-    ];
-
-    // Add the guaranteed demo buyers to the top of the list
-    finalBuyers.unshift(...demoBuyers);
-    // ---------------------------
-
-    const totalFound = finalBuyers.filter(b => b.emailStatus === 'found').length;
+    // Return ONLY buyers with valid emails found
+    finalBuyers = finalBuyers.filter(b => b.emailStatus === 'found');
+    const totalFound = finalBuyers.length;
 
     return Response.json({
       buyers: finalBuyers,
       totalFound,
-      message: `Found ${finalBuyers.length} businesses, ${totalFound} with emails`
+      message: `Found ${finalBuyers.length} businesses with emails`
     });
   } catch (error) {
     console.error('Error in find-buyers route:', error);

@@ -55,7 +55,7 @@ export default function LandingPage() {
           
           <motion.h1 
             variants={itemVariants}
-            className="text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-cyan-400 to-coral-400 gradient-text"
+            className="text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight leading-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-cyan-400 to-coral-400 gradient-text"
           >
             Discover Home Decor Buyers Across America
           </motion.h1>

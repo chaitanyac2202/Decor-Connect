@@ -43,13 +43,23 @@ export async function POST(request) {
       const personalizedBody = body.replace(/\[Buyer Name\]/g, recipient.name || 'Valued Partner');
       const trackingId = generateTrackingId();
 
+      let attachments = [];
+      if (seller?.productCategory?.toLowerCase().includes('candle holder')) {
+        const path = require('path');
+        attachments.push({
+          filename: 'Candle_Holders.pdf',
+          path: path.join(process.cwd(), 'Candle_Holders.pdf')
+        });
+      }
+
       const res = await sendEmail({
         to: recipient.email,
         subject,
         body: personalizedBody,
         seller,
         trackingId,
-        baseUrl
+        baseUrl,
+        attachments
       });
 
       if (res.success) {
@@ -96,6 +106,12 @@ export async function POST(request) {
           '',
           `Your outreach campaign via DecorConnect has been completed.`,
           '',
+          `--- EXACT MESSAGE SENT TO BUYERS ---`,
+          `Subject: ${subject}`,
+          ``,
+          body,
+          `------------------------------------`,
+          '',
           `📊 Summary:`,
           `   Emails Sent Successfully: ${results.sent}`,
           `   Emails Failed: ${results.failed}`,
@@ -103,12 +119,10 @@ export async function POST(request) {
           results.sent > 0 ? `✅ Successfully Sent To:\n${sentList}` : '',
           results.failed > 0 ? `\n❌ Failed:\n${failedList}` : '',
           '',
-          `📧 Subject Used: "${subject}"`,
-          '',
-          `Note: All emails were sent with your business name "${seller.businessName || 'N/A'}" as the sender. Buyer replies will be directed to this email address (${seller.email}).`,
+          `Note: All emails were sent with your business name "${seller.businessName || 'N/A'}" and your email address (${seller.email}). Buyer replies will go directly to your inbox.`,
           '',
           '— DecorConnect Platform'
-        ].filter(Boolean).join('\n');
+        ].filter(item => item !== false && item !== undefined && item !== null).join('\n');
 
         await transporter.sendMail({
           from: `"DecorConnect" <${process.env.GMAIL_USER}>`,

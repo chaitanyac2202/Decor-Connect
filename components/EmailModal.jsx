@@ -191,16 +191,16 @@ export default function EmailModal({ buyers, sellerInfo, onClose }) {
                 </div>
               </div>
               
-              <div className="flex justify-between pt-4">
+              <div className="flex flex-col sm:flex-row gap-3 justify-between pt-4">
                 <button
                   onClick={() => setStep('compose')}
-                  className="px-6 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-white transition-colors"
+                  className="px-6 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-white transition-colors w-full sm:w-auto"
                 >
                   Back to Edit
                 </button>
                 <button
                   onClick={handleSend}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 hover:opacity-90 text-white font-medium transition-opacity"
+                  className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 hover:opacity-90 text-white font-medium transition-opacity w-full sm:w-auto"
                 >
                   <Send className="w-4 h-4" />
                   Send {buyers.length} Emails

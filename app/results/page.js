@@ -129,7 +129,7 @@ export default function ResultsPage() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-white/5 border border-white/10 rounded-2xl p-4 mb-8 backdrop-blur-md">
-          <div className="flex gap-4 items-center">
+          <div className="flex flex-wrap gap-4 items-center justify-center sm:justify-start w-full sm:w-auto">
             <button 
               onClick={handleSelectAll}
               className="text-sm px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
@@ -146,13 +146,13 @@ export default function ResultsPage() {
             <span className="text-sm text-gray-400">{selectedBuyers.size} selected</span>
           </div>
 
-          <div className="flex gap-4 items-center w-full sm:w-auto">
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-gray-400" />
+          <div className="flex flex-col sm:flex-row gap-4 items-center w-full sm:w-auto">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Filter className="w-4 h-4 text-gray-400 shrink-0" />
               <select 
                 value={filter} 
                 onChange={(e) => setFilter(e.target.value)}
-                className="bg-black/40 border border-white/10 rounded-lg text-sm p-2 outline-none focus:border-purple-500/50"
+                className="bg-black/40 border border-white/10 rounded-lg text-sm p-2 outline-none focus:border-purple-500/50 w-full sm:w-auto"
               >
                 <option value="all">All Buyers</option>
                 <option value="withEmail">With Email</option>
@@ -162,7 +162,7 @@ export default function ResultsPage() {
             <select 
               value={sort} 
               onChange={(e) => setSort(e.target.value)}
-              className="bg-black/40 border border-white/10 rounded-lg text-sm p-2 outline-none focus:border-purple-500/50"
+              className="bg-black/40 border border-white/10 rounded-lg text-sm p-2 outline-none focus:border-purple-500/50 w-full sm:w-auto"
             >
               <option value="default">Default Sort</option>
               <option value="name">Sort by Name</option>
