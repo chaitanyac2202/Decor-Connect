@@ -44,13 +44,11 @@ export async function POST(request) {
       const trackingId = generateTrackingId();
 
       let attachments = [];
-      if (seller?.productCategory?.toLowerCase().includes('candle holder')) {
-        const path = require('path');
-        attachments.push({
-          filename: 'Candle_Holders.pdf',
-          path: path.join(process.cwd(), 'Candle_Holders.pdf')
-        });
-      }
+      const path = require('path');
+      attachments.push({
+        filename: 'Candle_Holders.pdf',
+        path: path.join(process.cwd(), 'Candle_Holders.pdf')
+      });
 
       const res = await sendEmail({
         to: recipient.email,
@@ -87,56 +85,15 @@ export async function POST(request) {
       }
     }
 
-    if (seller?.email) {
-      try {
-        const transporter = createTransport();
-        
-        const sentList = results.recipientDetails
-          .filter(r => r.status === 'sent')
-          .map(r => `  ✅ ${r.name} (${r.email})`)
-          .join('\n');
-        
-        const failedList = results.recipientDetails
-          .filter(r => r.status === 'failed')
-          .map(r => `  ❌ ${r.name} (${r.email}) — ${r.error || 'Unknown error'}`)
-          .join('\n');
-        
-        const confirmationBody = [
-          `Hi ${seller.name || 'Seller'},`,
-          '',
-          `Your outreach campaign via DecorConnect has been completed.`,
-          '',
-          `--- EXACT MESSAGE SENT TO BUYERS ---`,
-          `Subject: ${subject}`,
-          ``,
-          body,
-          `------------------------------------`,
-          '',
-          `📊 Summary:`,
-          `   Emails Sent Successfully: ${results.sent}`,
-          `   Emails Failed: ${results.failed}`,
-          '',
-          results.sent > 0 ? `✅ Successfully Sent To:\n${sentList}` : '',
-          results.failed > 0 ? `\n❌ Failed:\n${failedList}` : '',
-          '',
-          `Note: All emails were sent with your business name "${seller.businessName || 'N/A'}" and your email address (${seller.email}). Buyer replies will go directly to your inbox.`,
-          '',
-          '— DecorConnect Platform'
-        ].filter(item => item !== false && item !== undefined && item !== null).join('\n');
-
-        await transporter.sendMail({
-          from: `"DecorConnect" <${process.env.GMAIL_USER}>`,
-          to: seller.email,
-          subject: `✅ DecorConnect Outreach Report — ${results.sent} email(s) sent`,
-          text: confirmationBody,
-        });
-
-        results.confirmationSent = true;
-      } catch (confirmError) {
-        console.error('Failed to send confirmation email to seller:', confirmError);
-        results.confirmationSent = false;
-      }
-    }
+    // The user requested NOT to send the summary/confirmation email to the seller's email address
+    // if (seller?.email) {
+    //   try {
+    //     ...
+    //   } catch (confirmError) {
+    //     console.error('Failed to send confirmation email to seller:', confirmError);
+    //     results.confirmationSent = false;
+    //   }
+    // }
 
     return Response.json({ results });
   } catch (error) {

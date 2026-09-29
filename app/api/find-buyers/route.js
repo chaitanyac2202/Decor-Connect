@@ -8,6 +8,8 @@
 import { searchTomTom } from '../../../lib/tomtomClient';
 import { discoverBuyers } from '../../../lib/buyerDiscovery';
 import { scrapeEmail } from '../../../lib/emailScraper';
+import { searchFoursquare } from '../../../lib/foursquareClient';
+import { searchGooglePlaces } from '../../../lib/googlePlacesClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,14 +25,17 @@ export async function POST(request) {
       );
     }
 
-    // Step 1: Try TomTom API first (Commercial data, high quality, free tier)
-    let buyers = await searchTomTom(category, location);
-    
-    // Step 2: Fallback / Augment with free OpenStreetMap APIs
-    if (buyers.length < 20) {
-      const osmBuyers = await discoverBuyers(category, location);
-      buyers = [...buyers, ...osmBuyers];
-    }
+    // If the user selected 'All', use a broad search term to get maximum results
+    const searchQuery = category.toLowerCase() === 'all' ? 'Home Decor, Gift Shop, Retail' : category;
+
+    // Step 1: Run TomTom, OpenStreetMap, Foursquare, and Google Places searches in parallel for maximum results
+    const [tomtomBuyers, osmBuyers, fsqBuyers, googleBuyers] = await Promise.all([
+      searchTomTom(searchQuery, location),
+      discoverBuyers(searchQuery, location),
+      searchFoursquare(searchQuery, location),
+      searchGooglePlaces(searchQuery, location)
+    ]);
+    let buyers = [...tomtomBuyers, ...osmBuyers, ...fsqBuyers, ...googleBuyers];
     
     // Deduplicate by name
     const seenNames = new Set();
@@ -42,7 +47,6 @@ export async function POST(request) {
         deduplicated.push(item);
       }
     }
-    // Do not limit buyers - get all of them
     buyers = deduplicated;
 
     if (buyers.length === 0) {
@@ -50,7 +54,6 @@ export async function POST(request) {
     }
 
     // Step 2: For buyers with websites, try to scrape emails
-    // Process all concurrently for maximum speed to avoid serverless timeouts
     const MAX_CONCURRENT = 500;
     let finalBuyers = [];
 
@@ -58,9 +61,8 @@ export async function POST(request) {
       const chunk = buyers.slice(i, i + MAX_CONCURRENT);
 
       const promises = chunk.map(async (buyer) => {
-        let email = buyer.email || null; // Some OSM entries have email in tags
+        let email = buyer.email || null; 
 
-        // If no email from OSM data, try scraping the website
         if (!email && buyer.website) {
           email = await scrapeEmail(buyer.website);
         }
@@ -80,14 +82,21 @@ export async function POST(request) {
       });
     }
 
-    // Return ONLY buyers with valid emails found
-    finalBuyers = finalBuyers.filter(b => b.emailStatus === 'found');
-    const totalFound = finalBuyers.length;
+    // REMOVED STRICT FILTER: Because 95% of small businesses hide their emails behind contact forms,
+    // filtering them out causes 130+ businesses to disappear, leaving 0 results. 
+    // We will show ALL businesses found, but push the ones with emails to the very top.
+    finalBuyers.sort((a, b) => {
+      if (a.emailStatus === 'found' && b.emailStatus !== 'found') return -1;
+      if (a.emailStatus !== 'found' && b.emailStatus === 'found') return 1;
+      return 0;
+    });
+
+    const totalFoundWithEmails = finalBuyers.filter(b => b.emailStatus === 'found').length;
 
     return Response.json({
       buyers: finalBuyers,
-      totalFound,
-      message: `Found ${finalBuyers.length} businesses with emails`
+      totalFound: finalBuyers.length,
+      message: `Found ${finalBuyers.length} businesses (${totalFoundWithEmails} with public emails)`
     });
   } catch (error) {
     console.error('Error in find-buyers route:', error);

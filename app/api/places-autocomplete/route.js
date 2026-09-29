@@ -9,8 +9,8 @@ export async function GET(request) {
   }
 
   try {
-    // We can use Nominatim for free city autocomplete
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&featuretype=city&limit=5`;
+    // We can use Nominatim for free city autocomplete, restricted to the US
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&featuretype=city&countrycodes=us&limit=5`;
     
     const response = await fetch(url, {
       headers: {

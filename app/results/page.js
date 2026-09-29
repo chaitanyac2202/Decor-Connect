@@ -85,10 +85,7 @@ export default function ResultsPage() {
     URL.revokeObjectURL(url);
   };
 
-  const selectedWithEmailCount = Array.from(selectedBuyers).filter(id => {
-    const buyer = searchResults?.find(b => b.id === id);
-    return buyer && buyer.email;
-  }).length;
+  const selectedCount = selectedBuyers.size;
 
   if (!searchResults || searchResults.length === 0) {
     return (
@@ -98,7 +95,7 @@ export default function ResultsPage() {
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
             <div className="text-6xl mb-4">🔍</div>
             <h2 className="text-2xl font-bold text-white mb-2">No buyers found</h2>
-            <p className="text-gray-400">Try broadening your search criteria to find more potential partners.</p>
+            <p className="text-gray-400">Try searching in larger cities like <strong>Anchorage</strong>, <strong>Fairbanks</strong>, or <strong>Juneau</strong> for better results in Alaska!</p>
             <Link 
               href="/find-buyers"
               className="inline-block mt-6 px-6 py-3 bg-gradient-to-r from-purple-600 to-cyan-600 rounded-xl font-medium hover:opacity-90 transition-opacity"
@@ -197,7 +194,7 @@ export default function ResultsPage() {
 
       {/* Floating Action Button */}
       <AnimatePresence>
-        {selectedWithEmailCount > 0 && (
+        {selectedCount > 0 && (
           <motion.div
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -209,7 +206,7 @@ export default function ResultsPage() {
               className="pointer-events-auto flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-purple-600 via-cyan-600 to-coral-600 rounded-full font-bold text-white shadow-[0_0_30px_rgba(168,85,247,0.4)] hover:shadow-[0_0_40px_rgba(34,211,238,0.5)] transition-all hover:scale-105"
             >
               <Send className="w-5 h-5" />
-              Send Outreach Email ({selectedWithEmailCount})
+              Prepare Emails ({selectedCount})
             </button>
           </motion.div>
         )}
@@ -219,7 +216,7 @@ export default function ResultsPage() {
       <AnimatePresence>
         {isEmailModalOpen && (
           <EmailModal
-            buyers={searchResults.filter(b => selectedBuyers.has(b.id) && b.email)}
+            buyers={searchResults.filter(b => selectedBuyers.has(b.id))}
             sellerInfo={sellerInfo}
             onClose={() => setIsEmailModalOpen(false)}
           />
