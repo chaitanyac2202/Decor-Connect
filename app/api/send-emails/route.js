@@ -44,11 +44,8 @@ export async function POST(request) {
       const trackingId = generateTrackingId();
 
       let attachments = [];
-      const path = require('path');
-      attachments.push({
-        filename: 'Candle_Holders.pdf',
-        path: path.join(process.cwd(), 'Candle_Holders.pdf')
-      });
+      // PDF attachment removed to prevent Gmail and external spam filters from blocking the message.
+      // A Google Drive link is now used in the email body instead.
 
       const res = await sendEmail({
         to: recipient.email,
@@ -81,7 +78,8 @@ export async function POST(request) {
       }
 
       if (i < recipients.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // Increased delay to 3.5 seconds to prevent Gmail from flagging as spam/bulk
+        await new Promise((resolve) => setTimeout(resolve, 3500));
       }
     }
 
