@@ -25,24 +25,46 @@ export async function POST(request) {
       );
     }
 
-    const isCombined = category === 'All 5 Products (Combined Search)';
-    const searchQueries = isCombined 
-      ? [
-          'Singing bowls',
-          'Candle holders',
-          'Crystal candle holders',
-          'Decorative glassware and home decor',
-          'Votive candle holders'
-        ]
-      : [category.toLowerCase() === 'all' ? 'Home Decor, Gift Shop, Retail' : category];
+    let searchQueries = [];
+    if (Array.isArray(category)) {
+      if (category.includes('All 5 Products (Combined Search)')) {
+        searchQueries = [
+          'Singing bowls', 'Candle holders', 'Crystal candle holders',
+          'Decorative glassware and home decor', 'Votive candle holders'
+        ];
+        // Also add any extra keywords the user added
+        category.forEach(c => {
+          if (c !== 'All 5 Products (Combined Search)' && c !== 'All' && !searchQueries.includes(c)) {
+            searchQueries.push(c);
+          }
+        });
+      } else {
+        searchQueries = category.map(c => c.toLowerCase() === 'all' ? 'Home Decor, Gift Shop, Retail' : c);
+      }
+    } else {
+      const isCombined = category === 'All 5 Products (Combined Search)';
+      searchQueries = isCombined 
+        ? [
+            'Singing bowls',
+            'Candle holders',
+            'Crystal candle holders',
+            'Decorative glassware and home decor',
+            'Votive candle holders'
+          ]
+        : [category.toLowerCase() === 'all' ? 'Home Decor, Gift Shop, Retail' : category];
+    }
+
+    const { geocodeLocation } = require('../../../lib/buyerDiscovery');
+    const coords = await geocodeLocation(location);
+    const { lat, lon } = coords || {};
 
     let buyers = [];
 
     // Run searches for each query (sequentially to avoid obliterating rate limits, but the API calls inside are parallel)
     for (const query of searchQueries) {
       const [tomtomBuyers, osmBuyers, fsqBuyers, googleBuyers] = await Promise.all([
-        searchTomTom(query, location),
-        discoverBuyers(query, location),
+        searchTomTom(query, location, lat, lon),
+        discoverBuyers(query, location), // discoverBuyers handles its own geocoding caching or can be updated, but we'll leave it as is since it already works
         searchFoursquare(query, location),
         searchGooglePlaces(query, location)
       ]);

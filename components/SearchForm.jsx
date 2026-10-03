@@ -27,11 +27,20 @@ const ALASKA_LOCATIONS = [
 
 const SEARCH_KEYWORDS = [
   'All 5 Products (Combined Search)',
-  'All', 'candle holders', 'candle holder', 'decorative candle holders', 'metal candle holders',
+  'All', 
+  
+  // ✨ Magic / High-Yield Keywords ✨
+  'gift shop', 'home decor store', 'boutique',
+  'souvenir shop', 'tourist gift shop', // Huge in Alaska!
+  'yoga studio', 'wellness center', 'spa', 'metaphysical store', // Great for Singing Bowls
+  'florist', 'floral shop', 'interior designer', 'furniture store', // Great for Candle Holders
+  
+  // Specific Product Keywords
+  'candle holders', 'candle holder', 'decorative candle holders', 'metal candle holders',
   'handmade candle holders', 'decorative candle holder', 'tabletop candle holders',
-  'home decor candle holders', 'candle holder store', 'home decor store', 'gift shop',
-  'gift store', 'home accessories store', 'decor store', 'candle shop', 'candle retailer',
-  'home decor boutique', 'wholesale candle holders', 'candle holder wholesaler',
+  'home decor candle holders', 'candle holder store', 'candle shop', 'candle retailer',
+  'home accessories store', 'decor store', 'home decor boutique', 
+  'wholesale candle holders', 'candle holder wholesaler',
   'home decor wholesaler', 'giftware wholesaler'
 ];
 
@@ -47,7 +56,7 @@ export default function SearchForm() {
   const [mode, setMode] = useState('search'); // 'search' or 'direct'
 
   const [productCategory, setProductCategory] = useState('');
-  const [searchKeyword, setSearchKeyword] = useState('');
+  const [searchKeywords, setSearchKeywords] = useState([]);
   const [location, setLocation] = useState('');
   const [locationSuggestions, setLocationSuggestions] = useState(ALASKA_LOCATIONS);
   
@@ -142,7 +151,7 @@ export default function SearchForm() {
 
     if (mode === 'search') {
       if (!productCategory) newErrors.productCategory = 'Category is required';
-      if (!searchKeyword) newErrors.searchKeyword = 'Keyword is required';
+      if (searchKeywords.length === 0) newErrors.searchKeyword = 'At least one keyword is required';
     } else {
       if (!productCategory) newErrors.productCategory = 'Category is required';
       if (!directEmail) {
@@ -165,7 +174,7 @@ export default function SearchForm() {
       email: sellerEmail,
       businessName: businessName,
       productCategory: productCategory,
-      searchKeyword: mode === 'search' ? searchKeyword : '',
+      searchKeyword: mode === 'search' ? searchKeywords.join(', ') : '',
       location: location,
     });
 
@@ -196,7 +205,7 @@ export default function SearchForm() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ category: searchKeyword, location }),
+        body: JSON.stringify({ category: searchKeywords, location }),
       });
       
       if (!response.ok) {
@@ -330,14 +339,33 @@ export default function SearchForm() {
 
         {mode === 'search' ? (
           <motion.div variants={itemVariants}>
-            <label className={labelClasses}>Target Keyword</label>
+            <label className={labelClasses}>Target Keywords</label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {searchKeywords.map(kw => (
+                <span key={kw} className="flex items-center gap-1 bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full text-sm border border-purple-500/20">
+                  {kw}
+                  <button 
+                    type="button"
+                    onClick={() => setSearchKeywords(searchKeywords.filter(k => k !== kw))}
+                    className="hover:bg-purple-500/40 rounded-full p-0.5"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                  </button>
+                </span>
+              ))}
+            </div>
             <select
-              value={searchKeyword}
-              onChange={(e) => setSearchKeyword(e.target.value)}
+              value=""
+              onChange={(e) => {
+                const kw = e.target.value;
+                if (kw && !searchKeywords.includes(kw)) {
+                  setSearchKeywords([...searchKeywords, kw]);
+                }
+              }}
               className={`${inputClasses} appearance-none`}
             >
-              <option value="" disabled className="bg-gray-900">Select a search keyword</option>
-              {SEARCH_KEYWORDS.map(kw => (
+              <option value="" disabled className="bg-gray-900">Add a search keyword...</option>
+              {SEARCH_KEYWORDS.filter(kw => !searchKeywords.includes(kw)).map(kw => (
                 <option key={kw} value={kw} className="bg-gray-900">{kw}</option>
               ))}
             </select>

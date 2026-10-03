@@ -117,6 +117,11 @@ export default function DashboardPage() {
         
         if (campaign.recipients && campaign.recipients.length > 0) {
           campaign.recipients.forEach(r => {
+            // Only include successfully sent emails in the Excel sheet
+            if (r.status !== 'sent' && r.status !== 'success') {
+              return;
+            }
+
             // Apply recovered website if we have it
             if ((r.website === undefined || r.website === null || r.website === 'N/A') && recoveredWebsites[r.name]) {
               r.website = recoveredWebsites[r.name];
