@@ -9,6 +9,7 @@ import { useToast } from '@/components/Toast';
 import EmailModal from '@/components/EmailModal';
 
 const CATEGORIES = [
+  'All 5 Products (Combined Search)',
   'Singing bowls',
   'Candle holders',
   'Crystal candle holders',
@@ -25,6 +26,7 @@ const ALASKA_LOCATIONS = [
 ];
 
 const SEARCH_KEYWORDS = [
+  'All 5 Products (Combined Search)',
   'All', 'candle holders', 'candle holder', 'decorative candle holders', 'metal candle holders',
   'handmade candle holders', 'decorative candle holder', 'tabletop candle holders',
   'home decor candle holders', 'candle holder store', 'home decor store', 'gift shop',

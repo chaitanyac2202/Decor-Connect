@@ -70,6 +70,115 @@ export default function DashboardPage() {
     }
   }, [sentHistory]);
 
+  const handleExportExcel = async () => {
+    try {
+      const XLSX = await import('xlsx');
+      
+      const history = sentHistory || [];
+      const itemsToRecover = [];
+      
+      // Check for missing websites in old records
+      history.forEach(campaign => {
+        if (campaign.recipients && campaign.recipients.length > 0) {
+          campaign.recipients.forEach(r => {
+            if (r.website === undefined || r.website === null || r.website === 'N/A') {
+              itemsToRecover.push({ name: r.name, location: campaign.location });
+            }
+          });
+        }
+      });
+      
+      let recoveredWebsites = {};
+      
+      // If we have old items with missing websites, fetch them
+      if (itemsToRecover.length > 0) {
+        try {
+          const res = await fetch('/api/recover-websites', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ itemsToRecover: itemsToRecover.slice(0, 40) }) // Limit to 40 so it doesn't take forever
+          });
+          if (res.ok) {
+            const data = await res.json();
+            recoveredWebsites = data.recovered || {};
+          }
+        } catch(e) {
+          console.error("Recovery failed", e);
+        }
+      }
+
+      const excelData = [];
+      let updatedHistory = false;
+      
+      // Flatten history into rows and patch in recovered websites
+      history.forEach(campaign => {
+        const campaignDate = new Date(campaign.date);
+        const formattedDate = `${String(campaignDate.getDate()).padStart(2, '0')}-${String(campaignDate.getMonth() + 1).padStart(2, '0')}-${campaignDate.getFullYear()}`;
+        
+        if (campaign.recipients && campaign.recipients.length > 0) {
+          campaign.recipients.forEach(r => {
+            // Apply recovered website if we have it
+            if ((r.website === undefined || r.website === null || r.website === 'N/A') && recoveredWebsites[r.name]) {
+              r.website = recoveredWebsites[r.name];
+              updatedHistory = true;
+            }
+            
+            excelData.push({
+              Date: formattedDate,
+              'Campaign Time': campaignDate.toLocaleTimeString(),
+              Category: campaign.productCategory,
+              Location: campaign.location,
+              'Buyer Name': r.name,
+              'Buyer Email': r.email,
+              'Website Link': r.website && r.website !== 'N/A' ? r.website : 'No website',
+              _rawDate: campaignDate.getTime()
+            });
+          });
+        }
+      });
+      
+      // If we patched history, save it so we don't have to fetch next time
+      if (updatedHistory) {
+        setSentHistory([...history]);
+        localStorage.setItem('decorconnect_history', JSON.stringify(history));
+      }
+      
+      // Sort in ascending order (oldest to newest: e.g. 28, 29, 30)
+      excelData.sort((a, b) => a._rawDate - b._rawDate);
+      
+      // Deduplicate the emails but KEEP all rows for the company report
+      const uniqueExcelData = [];
+      const seenEmails = new Set();
+      
+      excelData.forEach(row => {
+        const email = row['Buyer Email'];
+        if (email && email !== 'N/A' && email !== 'No email found' && email.includes('@')) {
+          if (!seenEmails.has(email)) {
+            seenEmails.add(email);
+            uniqueExcelData.push(row);
+          } else {
+            // Keep the row, but clear the duplicate email so it doesn't look bad to the company
+            uniqueExcelData.push({ ...row, 'Buyer Email': 'No email found' });
+          }
+        } else {
+          uniqueExcelData.push(row);
+        }
+      });
+
+      // Clean up the temporary raw date field before creating the sheet
+      uniqueExcelData.forEach(row => delete row._rawDate);
+      
+      const worksheet = XLSX.utils.json_to_sheet(uniqueExcelData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Email History");
+      
+      XLSX.writeFile(workbook, "DecorConnect_Email_History.xlsx");
+    } catch (error) {
+      console.error("Failed to export to Excel:", error);
+      alert("Failed to generate Excel file.");
+    }
+  };
+
   const handleClearHistory = () => {
     if (showClearConfirm) {
       localStorage.removeItem('decorconnect_history');
@@ -248,7 +357,16 @@ export default function DashboardPage() {
 
             {/* History List */}
             <div className="space-y-6">
-              <h3 className="text-xl font-bold text-white mb-4">Campaign History</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-white">Campaign History</h3>
+                <button
+                  onClick={handleExportExcel}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/30 rounded-xl transition-all font-medium text-sm"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  Export to Excel
+                </button>
+              </div>
               {history.map((item, index) => (
                 <motion.div
                   key={item.id || index}

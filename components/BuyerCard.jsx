@@ -67,6 +67,11 @@ export default function BuyerCard({ buyer, isSelected, onToggle, index }) {
               {buyer.rating}
             </span>
           )}
+          {buyer.matchedProducts && buyer.matchedProducts.length > 0 && buyer.matchedProducts.map(prod => (
+            <span key={prod} className="px-2 py-0.5 text-xs rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/20 mt-1">
+              {prod}
+            </span>
+          ))}
         </div>
       </div>
 

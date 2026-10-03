@@ -61,6 +61,7 @@ export default function EmailModal({ buyers, sellerInfo, onClose }) {
         recipients: (sendResults.recipientDetails || []).map(r => ({
           name: r.name,
           email: r.email,
+          website: r.website || 'No website',
           status: r.status,
           trackingId: r.trackingId
         })),

@@ -25,36 +25,61 @@ export async function POST(request) {
       );
     }
 
-    // If the user selected 'All', use a broad search term to get maximum results
-    const searchQuery = category.toLowerCase() === 'all' ? 'Home Decor, Gift Shop, Retail' : category;
+    const isCombined = category === 'All 5 Products (Combined Search)';
+    const searchQueries = isCombined 
+      ? [
+          'Singing bowls',
+          'Candle holders',
+          'Crystal candle holders',
+          'Decorative glassware and home decor',
+          'Votive candle holders'
+        ]
+      : [category.toLowerCase() === 'all' ? 'Home Decor, Gift Shop, Retail' : category];
 
-    // Step 1: Run TomTom, OpenStreetMap, Foursquare, and Google Places searches in parallel for maximum results
-    const [tomtomBuyers, osmBuyers, fsqBuyers, googleBuyers] = await Promise.all([
-      searchTomTom(searchQuery, location),
-      discoverBuyers(searchQuery, location),
-      searchFoursquare(searchQuery, location),
-      searchGooglePlaces(searchQuery, location)
-    ]);
-    let buyers = [...tomtomBuyers, ...osmBuyers, ...fsqBuyers, ...googleBuyers];
+    let buyers = [];
+
+    // Run searches for each query (sequentially to avoid obliterating rate limits, but the API calls inside are parallel)
+    for (const query of searchQueries) {
+      const [tomtomBuyers, osmBuyers, fsqBuyers, googleBuyers] = await Promise.all([
+        searchTomTom(query, location),
+        discoverBuyers(query, location),
+        searchFoursquare(query, location),
+        searchGooglePlaces(query, location)
+      ]);
+      
+      const combinedForQuery = [...tomtomBuyers, ...osmBuyers, ...fsqBuyers, ...googleBuyers];
+      // Tag each buyer with the query that found them
+      combinedForQuery.forEach(b => b.matchedProduct = query);
+      buyers = buyers.concat(combinedForQuery);
+    }
     
-    // Deduplicate by name
-    const seenNames = new Set();
-    const deduplicated = [];
+    // Deduplicate by name but aggregate matchedProducts
+    const seenNames = new Map();
     for (const item of buyers) {
       const normalizedName = item.name.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
-      if (normalizedName.length > 0 && !seenNames.has(normalizedName)) {
-        seenNames.add(normalizedName);
-        deduplicated.push(item);
+      if (normalizedName.length > 0) {
+        if (!seenNames.has(normalizedName)) {
+          // First time seeing this buyer
+          item.matchedProducts = [item.matchedProduct];
+          seenNames.set(normalizedName, item);
+        } else {
+          // Already saw this buyer, add the matched product to their list
+          const existingBuyer = seenNames.get(normalizedName);
+          if (!existingBuyer.matchedProducts.includes(item.matchedProduct)) {
+            existingBuyer.matchedProducts.push(item.matchedProduct);
+          }
+        }
       }
     }
-    buyers = deduplicated;
+    buyers = Array.from(seenNames.values());
 
     if (buyers.length === 0) {
       return Response.json({ buyers: [], totalFound: 0 });
     }
 
     // Step 2: For buyers with websites, try to scrape emails
-    const MAX_CONCURRENT = 500;
+    // Reduced concurrency from 500 to 10. 500 concurrent connections saturates the network and causes the 2.5s timeout to trigger on every request during a second search.
+    const MAX_CONCURRENT = 10;
     let finalBuyers = [];
 
     for (let i = 0; i < buyers.length; i += MAX_CONCURRENT) {
@@ -81,6 +106,28 @@ export async function POST(request) {
         }
       });
     }
+
+    // Process duplicate emails without deleting the business rows, so the total count remains high for the report
+    const seenEmails = new Set();
+    const deduplicatedFinal = [];
+    for (const buyer of finalBuyers) {
+      if (buyer.email && buyer.email !== 'N/A' && buyer.email !== 'No email found') {
+        if (!seenEmails.has(buyer.email)) {
+          seenEmails.add(buyer.email);
+          deduplicatedFinal.push(buyer);
+        } else {
+          // If we already saw this email, KEEP the business row but remove the duplicate email
+          // This prevents sending 10+ identical emails but keeps the business listed for the report
+          buyer.email = null;
+          buyer.emailStatus = 'not_found';
+          deduplicatedFinal.push(buyer);
+        }
+      } else {
+        // If no email, keep it
+        deduplicatedFinal.push(buyer);
+      }
+    }
+    finalBuyers = deduplicatedFinal;
 
     // REMOVED STRICT FILTER: Because 95% of small businesses hide their emails behind contact forms,
     // filtering them out causes 130+ businesses to disappear, leaving 0 results. 
