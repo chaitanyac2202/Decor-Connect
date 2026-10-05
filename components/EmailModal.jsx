@@ -10,11 +10,11 @@ export default function EmailModal({ buyers, sellerInfo, onClose }) {
   const { addToHistory } = useContext(AppContext);
   const [step, setStep] = useState('compose'); // compose, preview, sending, summary
   
-  const [selectedTemplate, setSelectedTemplate] = useState('introduction');
-  const initialTemplate = EMAIL_TEMPLATES.find(t => t.id === 'introduction');
+  const [selectedTemplate, setSelectedTemplate] = useState('company_mandated');
+  const initialTemplate = EMAIL_TEMPLATES.find(t => t.id === 'company_mandated') || EMAIL_TEMPLATES[0];
   
-  const [subject, setSubject] = useState(initialTemplate.subject(sellerInfo));
-  const [body, setBody] = useState(initialTemplate.body(sellerInfo));
+  const [subject, setSubject] = useState(initialTemplate ? initialTemplate.subject(sellerInfo) : '');
+  const [body, setBody] = useState(initialTemplate ? initialTemplate.body(sellerInfo) : '');
 
   const [results, setResults] = useState(null);
 
